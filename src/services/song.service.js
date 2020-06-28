@@ -3,8 +3,9 @@ import axios from "axios";
 
 export const songService = {
     getAll,
+    getByFirstCharacterAndStatus,
+    getByName,
     getDone,
-    getToDo,
     getSong,
     updateSong,
     insertSong,
@@ -26,11 +27,28 @@ function getAll() {
     return fetch(`${apiUrl}/songs`, requestOptions).then(handleResponse);
 }
 
-function getDone() {
-    return getAll();
+function getByFirstCharacterAndStatus(firstCharacter, status) {
+    if (!firstCharacter) {
+        return Promise.all([]);
+    }
+    const requestOptions = {
+        method: 'GET',
+        headers: authHeader()
+    };
+
+    return fetch(`${apiUrl}/songs?first-character=${firstCharacter}&status=${status}`, requestOptions).then(handleResponse);
 }
 
-function getToDo() {
+function getByName(name) {
+    const requestOptions = {
+        method: 'GET',
+        headers: authHeader()
+    };
+
+    return fetch(`${apiUrl}/songs?name=${name}`, requestOptions).then(handleResponse);
+}
+
+function getDone() {
     return getAll();
 }
 

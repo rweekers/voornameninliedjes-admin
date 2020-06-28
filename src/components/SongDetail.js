@@ -1,16 +1,18 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import { connect } from 'react-redux';
+import { fetchSongs } from '../actions';
+import { getIsFetching, getSongs, getErrorMessage } from '../reducers';
 import { songService } from '../services/song.service';
-import './SongDetail.css';
 import { withStyles } from '@material-ui/styles';
 import Typography from '@material-ui/core/Typography';
 import Grid from '@material-ui/core/Grid'
 import TextField from '@material-ui/core/TextField';
 import Button from '@material-ui/core/Button';
-import ExpansionPanel from '@material-ui/core/ExpansionPanel';
-import ExpansionPanelSummary from '@material-ui/core/ExpansionPanelSummary';
-import ExpansionPanelDetails from '@material-ui/core/ExpansionPanelDetails';
-import ExpansionPanelActions from '@material-ui/core/ExpansionPanelActions';
+import Accordion from '@material-ui/core/Accordion';
+import AccordionSummary from '@material-ui/core/AccordionSummary';
+import AccordionDetails from '@material-ui/core/AccordionDetails';
+import AccordionActions from '@material-ui/core/AccordionActions';
 import ToggleButton from '@material-ui/lab/ToggleButton';
 import ToggleButtonGroup from '@material-ui/lab/ToggleButtonGroup';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
@@ -26,12 +28,33 @@ import DialogActions from '@material-ui/core/DialogActions';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogContentText from '@material-ui/core/DialogContentText';
 import DialogTitle from '@material-ui/core/DialogTitle';
-import SourceFormDialog from '../material-components/SourceFormDialog';
-import CustomSnackBar from '../material-components/CustomSnackBar';
+import SourceFormDialog from './SourceFormDialog';
+import CustomSnackBar from './CustomSnackBar';
 
 const styles = theme => ({
+    songText: {
+        color: 'whitesmoke',
+        fontSize: '1.5em',
+    },
+    artistImage: {
+        maxWidth: '100%',
+    },
+    previewWebsiteWrapper: {
+        width: '100%',
+        height: '800px',
+    },
+    previewWebsite: {
+        width: '100%',
+        height: '100%',
+        border: 'none',
+    },
+
     root: {
         flexGrow: 1,
+        '& a': {
+            textDecoration: 'none',
+            color: 'white',
+        },
     },
     container: {
         display: 'flex',
@@ -93,13 +116,13 @@ const styles = theme => ({
     button: {
         margin: 10,
     },
-    expansionPanel: {
+    accordion: {
         color: "lightgrey",
         backgroundColor: "#424242",
         marginLeft: 10,
         marginRight: 10,
     },
-    sourcesExpansionPanel: {
+    sourcesAccordion: {
         color: "lightgrey",
         backgroundColor: "#424242",
         marginLeft: 10,
@@ -143,7 +166,7 @@ class SongDetail extends React.Component {
         super(props);
 
         this.state = {
-            song: { artist: '', title: '', name: '', spotify: '', youtube: '', background: '', flickrPhotos: [], wikimediaPhotos: [], sources: [] },
+            song: { artist: '', title: '', name: '', spotify: '', wikipediaPage: '', youtube: '', background: '', flickrPhotos: [], wikimediaPhotos: [], sources: [] },
             user: {},
             photo: '',
             contribution: '',
@@ -177,6 +200,7 @@ class SongDetail extends React.Component {
         this.clearValidations();
 
         const value = event.target.value;
+
         this.setState({ song: { ...this.state.song, [name]: value } })
     }
 
@@ -325,12 +349,10 @@ class SongDetail extends React.Component {
         let message = '';
 
         if (this.state.song.id) {
-            console.log(`updating song with id ${this.state.song.id}`);
             songService.updateSong(this.state.song, this.state.user);
             message = 'Nummer bijgewerkt';
             this.handleClick('success', message);
         } else {
-            console.log('inserting song');
             let song = this.state.song;
             songService.insertSong(song, this.state.user)
                 .then(song => {
@@ -383,8 +405,8 @@ class SongDetail extends React.Component {
     isValid(song) {
         let isValid = true;
 
-        const titleWords = song.title.split(' ');
-        if (!titleWords.includes(song.name)) {
+        const titleWords = song.title.split(' ').join(',').split('\'').join(',').split(',');
+        if (!titleWords.includes(song.name.trim())) {
             this.setState({
                 open: true,
                 messageType: 'error',
@@ -418,8 +440,8 @@ class SongDetail extends React.Component {
             isValid = false;
         }
 
-        if (song.status === 'SHOW' && !song.background) {
-            this.setState({ 'backgroundError': 'Achtergrond moet gevuld zijn' });
+        if (song.status === 'SHOW' && !song.background && !song.wikipediaPage) {
+            this.setState({ 'backgroundError': 'Achtergrond of wikipagina moet gevuld zijn' });
             isValid = false;
         }
 
@@ -453,14 +475,12 @@ class SongDetail extends React.Component {
 
         if (this.state.song.flickrPhotos.length > 0) {
             songService.getFlickrPhotoInfo(pictureValue).then(photo => {
-                console.log(photo.license);
                 if (!validLicenses.includes(photo.license)) {
                     this.setState({ 'licenseError': 'Deze foto mag niet rechtenvrij gebruikt worden' });
                 }
                 const flickrUrl = `https://farm${photo.farm}.staticflickr.com/${photo.server}/${photo.id}_${photo.secret}_c.jpg`
                 this.setState({ song: { ...this.state.song, 'artistImage': flickrUrl } });
             }).catch(error => {
-                console.log('Unknown id ' + this.state.song.flickrPhotos[0]);
                 this.setState({ song: { ...this.state.song, 'artistImage': '' } });
             });
         }
@@ -503,7 +523,8 @@ class SongDetail extends React.Component {
                 artist: '', 
                 title: '', 
                 name: '', 
-                spotify: '', 
+                spotify: '',
+                wikipediaPage: '',
                 youtube: '', 
                 background: '', 
                 artistImage: ''
@@ -511,11 +532,19 @@ class SongDetail extends React.Component {
             this.setState({ song });
         } else {
             songService.getSong(songId).then(song => {
+                song.wikipediaPage = song.wikipediaPage ? song.wikipediaPage : '';
                 song.spotify = song.spotify ? song.spotify : '';
                 song.youtube = song.youtube ? song.youtube : '';
                 song.background = song.background ? song.background : '';
                 this.setState({ song });
             });
+        }
+    }
+    
+    componentDidUpdate(prevProps) {
+        if (this.props.location.pathname !== prevProps.location.pathname) {
+            // call the fetch function again
+            this.componentDidMount();
         }
     }
 
@@ -526,8 +555,6 @@ class SongDetail extends React.Component {
         const url = song.wikimediaPhotos.length > 0 ? song.wikimediaPhotos[0].url : '';
         const attribution = song.wikimediaPhotos.length > 0 ? song.wikimediaPhotos[0].attribution : '';
         const flickrId = song.flickrPhotos.length > 0 ? song.flickrPhotos[0] : '';
-
-        console.log(song);
 
         const songUrl = `https://voornameninliedjes.nl/song/${song.id}`
 
@@ -630,6 +657,30 @@ class SongDetail extends React.Component {
                                     <Typography variant="subtitle1" className={classes.toggleButtonText} gutterBottom>Te verwijderen</Typography>
                                 </ToggleButton>
                             </ToggleButtonGroup>
+                            <TextField
+                                required={song.status === 'SHOW' && !song.background}
+                                id="wikipediaPage"
+                                label="Wikipedia Page"
+                                value={song.wikipediaPage}
+                                className={classes.textField}
+                                InputLabelProps={{
+                                    className: classes.inputLabel
+                                }}
+                                InputProps={{
+                                    classes: {
+                                        input: classes.input,
+                                        underline: classes.underline,
+                                    }
+                                }}
+                                FormHelperTextProps={{
+                                    classes:{
+                                      error: classes.error
+                                    }
+                                  }}
+                                fullWidth={true}
+                                onChange={this.handleChange('wikipediaPage')}
+                                margin="normal"
+                            />
                             <TextField
                                 required={song.status === 'SHOW'}
                                 id="youtube"
@@ -758,7 +809,7 @@ class SongDetail extends React.Component {
                                 margin="normal"
                             />
                             <TextField
-                                required={song.status === 'SHOW'}
+                                required={song.status === 'SHOW' && !song.wikipediaPage}
                                 id="background"
                                 label="Achtergrond"
                                 placeholder="Achtergrondinformatie over het nummer"
@@ -785,16 +836,16 @@ class SongDetail extends React.Component {
                                 onChange={this.handleChange('background')}
                                 margin="dense"
                             />
-                            <ExpansionPanel className={classes.sourcesExpansionPanel}>
-                                <ExpansionPanelSummary
+                            <Accordion className={classes.sourcesAccordion}>
+                                <AccordionSummary
                                     expandIcon={<ExpandMoreIcon />}
                                     aria-controls="sources-content"
                                     id="sources-header"
                                 >
                                 <Typography className={classes.heading}>Bronnen</Typography>
-                                </ExpansionPanelSummary>
+                                </AccordionSummary>
                                 {song.sources.map((s, index) => (
-                                    <ExpansionPanelDetails key={`source${index + 1}`}>
+                                    <AccordionDetails key={`source${index + 1}`}>
                                         <Grid container spacing={1} alignItems='center'>
                                             <Grid item xs={10}>
                                                 <Link href={s.url} className={classes.link} underline='none' target='_blank' rel='noopener'>
@@ -835,15 +886,15 @@ class SongDetail extends React.Component {
                                                 </Dialog>
                                             </Grid>
                                         </Grid>
-                                    </ExpansionPanelDetails>
+                                    </AccordionDetails>
                                 ))}
                                 <Divider />
-                                <ExpansionPanelActions>
+                                <AccordionActions>
                                     <Button size="small" variant="contained" className={classes.button} color="primary" onClick={() => this.addSource()}>
                                         Bron toevoegen
                                     </Button>
-                                </ExpansionPanelActions>
-                            </ExpansionPanel>
+                                </AccordionActions>
+                            </Accordion>
 
                             <Button variant="contained" color="primary" className={classes.button} fullWidth={true} type="submit" onClick={() => this.setReroute(true)}>
                                 Opslaan&Sluiten
@@ -868,69 +919,69 @@ class SongDetail extends React.Component {
                         </form>
                     </Grid>
                     <Grid item xs={12} sm={6}>
-                        <ExpansionPanel className={classes.expansionPanel} defaultExpanded={true}>
-                            <ExpansionPanelSummary
+                        <Accordion className={classes.accordion} defaultExpanded={true}>
+                            <AccordionSummary
                                 expandIcon={<ExpandMoreIcon />}
                                 aria-controls="background-content"
                                 id="background-header"
                             >
                                 <Typography variant="h5" gutterBottom>Geformatteerde achtergrond tekst</Typography>
-                            </ExpansionPanelSummary>
-                            <ExpansionPanelDetails>
+                            </AccordionSummary>
+                            <AccordionDetails>
                                 <div className="song-text-container">
-                                    <content className="song-text"><ReactMarkdown source={this.state.song.background} /></content>
+                                    <content className={classes.songText}><ReactMarkdown source={this.state.song.background} /></content>
                                 </div>
-                            </ExpansionPanelDetails>
-                        </ExpansionPanel>
-                        <ExpansionPanel className={classes.expansionPanel}>
-                            <ExpansionPanelSummary
+                            </AccordionDetails>
+                        </Accordion>
+                        <Accordion className={classes.accordion}>
+                            <AccordionSummary
                                 expandIcon={<ExpandMoreIcon />}
                                 aria-controls="youtube-spotify-content"
                                 id="youtube-spotify-header"
                             >
                                 <Typography variant="h5" gutterBottom>YouTube en Spotify</Typography>
-                            </ExpansionPanelSummary>
-                            <ExpansionPanelDetails>
+                            </AccordionSummary>
+                            <AccordionDetails>
                                 <div className="spotify">
                                     <iframe src={`https://open.spotify.com/embed/track/${song.spotify}`} className="spotify" width="100%" height="80px" title={song.title} frameBorder="0" allowtransparency="true" allow="encrypted-media"></iframe>
                                 </div>
                                 <div className="youtube">
                                     <iframe src={`https://www.youtube-nocookie.com/embed/${song.youtube}?rel=0`} width="80%" height="100%" title={song.title}></iframe>
                                 </div>
-                            </ExpansionPanelDetails>
-                        </ExpansionPanel>
-                        <ExpansionPanel className={classes.expansionPanel}>
-                            <ExpansionPanelSummary
+                            </AccordionDetails>
+                        </Accordion>
+                        <Accordion className={classes.accordion}>
+                            <AccordionSummary
                                 expandIcon={<ExpandMoreIcon />}
                                 aria-controls="image-content"
                                 id="image-header"
                             >
                                 <Typography variant="h5" gutterBottom>Foto artiest</Typography>
-                            </ExpansionPanelSummary>
-                            <ExpansionPanelDetails>
+                            </AccordionSummary>
+                            <AccordionDetails>
                                 <div>
                                     {song.artistImage &&
-                                        <img className="artistImage"
+                                        <img className={classes.artistImage}
                                             src={song.artistImage}
                                             alt={song.artist}
                                         />}
                                 </div>
-                            </ExpansionPanelDetails>
-                        </ExpansionPanel>
-                        <ExpansionPanel className={classes.expansionPanel}>
-                            <ExpansionPanelSummary
+                            </AccordionDetails>
+                        </Accordion>
+                        <Accordion className={classes.accordion}>
+                            <AccordionSummary
                                 expandIcon={<ExpandMoreIcon />}
                                 aria-controls="preview-content"
                                 id="preview-header"
                             >
                                 <Typography variant="h5" gutterBottom>Preview website</Typography>
-                            </ExpansionPanelSummary>
-                            <ExpansionPanelDetails>
-                                <div className="preview-website-wrapper">
-                                    <iframe src={songUrl} title="preview-website" className="preview-website" />
+                            </AccordionSummary>
+                            <AccordionDetails>
+                                <div className={classes.previewWebsiteWrapper}>
+                                    <iframe src={songUrl} title="preview-website" className={classes.previewWebsite} />
                                 </div>
-                            </ExpansionPanelDetails>
-                        </ExpansionPanel>
+                            </AccordionDetails>
+                        </Accordion>
                     </Grid>
                 </Grid>
             </div >
@@ -941,5 +992,18 @@ class SongDetail extends React.Component {
 SongDetail.propTypes = {
     classes: PropTypes.object.isRequired,
 };
+
+const mapStateToProps = (state, { params }) => {
+    return {
+      isFetching: getIsFetching(state),
+      songs: getSongs(state),
+      errorMessage: getErrorMessage(state),
+    };
+  };
+
+SongDetail = connect(
+    mapStateToProps,
+    { fetchSongs }
+  )(SongDetail);
 
 export default withStyles(styles)(SongDetail);
