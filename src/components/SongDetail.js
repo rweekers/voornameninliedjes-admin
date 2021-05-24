@@ -354,6 +354,7 @@ class SongDetail extends React.Component {
             this.handleClick('success', message);
         } else {
             let song = this.state.song;
+            // use redux
             songService.insertSong(song, this.state.user)
                 .then(song => {
                     this.setState({ song: { ...this.state.song, id: song.id } });
@@ -373,6 +374,7 @@ class SongDetail extends React.Component {
     }
 
     removeSong() {
+        // use redux
         songService.removeSong(this.state.song.id);
         this.props.history.push({
                 pathname: '/songs',
@@ -405,12 +407,17 @@ class SongDetail extends React.Component {
     isValid(song) {
         let isValid = true;
 
-        const titleWords = song.title.split(' ').join(',').split('\'').join(',').split(',');
-        if (!titleWords.includes(song.name.trim())) {
+        const titleWords = song.title.trim().split(' ').join(',').split('\'').join(',').split(',');
+        const nameWords = song.name.trim().split(' ').join(',').split('\'').join(',').split(',');
+        // TODO first check is for all items equals, second for order, fix to make this better
+        const titleIncludesName = nameWords.every(word => titleWords.includes(word));
+        const titleIncludesNameInOrder = titleWords.join().includes(nameWords.join())
+
+        if (!titleIncludesName || !titleIncludesNameInOrder) {
             this.setState({
                 open: true,
                 messageType: 'error',
-                messageText: 'De naam moet voorkomen in de titel van het nummer',
+                messageText: `De naam ${song.name.trim()} moet voorkomen in de titel ${song.title.trim()} van het nummer`,
             });
             isValid = false;
         }
@@ -474,6 +481,7 @@ class SongDetail extends React.Component {
         const validLicenses = ['1', '2', '3', '4', '5', '6', '7'];
 
         if (this.state.song.flickrPhotos.length > 0) {
+            // use redux
             songService.getFlickrPhotoInfo(pictureValue).then(photo => {
                 if (!validLicenses.includes(photo.license)) {
                     this.setState({ 'licenseError': 'Deze foto mag niet rechtenvrij gebruikt worden' });
@@ -531,6 +539,7 @@ class SongDetail extends React.Component {
             };
             this.setState({ song });
         } else {
+            // use redux
             songService.getSong(songId).then(song => {
                 song.wikipediaPage = song.wikipediaPage ? song.wikipediaPage : '';
                 song.spotify = song.spotify ? song.spotify : '';
