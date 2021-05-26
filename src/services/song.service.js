@@ -10,13 +10,23 @@ export const songService = {
     updateSong,
     insertSong,
     removeSong,
-    getFlickrPhotoInfo
+    getFlickrPhotoInfo,
+    generateWebsite
 };
 
 const apiUrl = 'https://admin.voornameninliedjes.nl'
 const FLICKR_PHOTO_DETAIL = 'https://api.flickr.com/services/rest/?method=flickr.photos.getInfo&api_key=9676a28e9cb321d2721e813055abb6dc&format=json&nojsoncallback=true&photo_id=';
 const FLICKR_USER_DETAIL = 'https://api.flickr.com/services/rest/?method=flickr.people.getInfo&api_key=9676a28e9cb321d2721e813055abb6dc&format=json&nojsoncallback=true&user_id=';
 const FLICKR_LICENCES = 'https://api.flickr.com/services/rest/?method=flickr.photos.licenses.getInfo&api_key=9676a28e9cb321d2721e813055abb6dc&format=json&nojsoncallback=true'
+const VERCEL_API = 'https://api.vercel.com/v1/integrations/deploy/prj_5Cn5nJMI4mATP6OjvDvREmnHi4io/UZdVpaO3ju';
+
+function generateWebsite() {
+    const requestOptions = {
+        method: 'POST'
+    };
+    // check return
+    return fetch(VERCEL_API, requestOptions).then(handleResponse);
+}
 
 function getAll() {
     const requestOptions = {

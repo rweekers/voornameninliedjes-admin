@@ -53,3 +53,25 @@ export const searchSongs = (query) => (dispatch, getState) => {
     }
   );
 }
+
+export const generateSite = () => (dispatch, getState) => {
+
+  dispatch({
+    type: 'GENERATE_WEBSITE_REQUEST'
+  });
+
+  return songService.generateSite().then(
+    response => {
+      dispatch({
+        type: 'GENERATE_WEBSITE_SUCCESS',
+        response: response
+      });
+    },
+    error => {
+      dispatch({
+        type: 'GENERATE_WEBSITE_FAILURE',
+        message: error.message || 'Something went wrong.',
+      });
+    }
+  );
+}

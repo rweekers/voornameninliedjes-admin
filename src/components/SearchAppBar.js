@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { connect } from 'react-redux';
-import { searchSongs, fetchSongs, navigateTo } from '../actions';
+import { searchSongs, fetchSongs, navigateTo, generateSite } from '../actions';
 import { getIsFetchingSearch, getSearchedSongs, getErrorMessage } from '../reducers';
 import AppBar from '@material-ui/core/AppBar';
 import Toolbar from '@material-ui/core/Toolbar';
@@ -11,6 +11,7 @@ import Button from '@material-ui/core/Button';
 import TextField from '@material-ui/core/TextField';
 import CircularProgress from '@material-ui/core/CircularProgress';
 import Autocomplete from '@material-ui/lab/Autocomplete';
+import { songService } from '../services/song.service';
 
 const useStyles = makeStyles(theme => ({
   root: {
@@ -32,6 +33,9 @@ const useStyles = makeStyles(theme => ({
     [theme.breakpoints.down('sm')]: {
       display: 'block',
     },
+  },
+  generateWebsite: {
+    marginRight: '2%',
   },
   searchInput: {
     backgroundColor: 'white',
@@ -93,6 +97,11 @@ const SearchAppBar = (props) => {
     }
   }
 
+  const generateSite = () => {
+    // TODO dispatch action and get state to show successfull request
+    songService.generateWebsite();
+  }
+
   return (
     <div className={classes.root} hidden={props.loggedOut}>
       <AppBar position="static">
@@ -109,6 +118,9 @@ const SearchAppBar = (props) => {
           <Typography className={classes.title} variant="h4" noWrap>
             Voornamen in liedjes
           </Typography>
+          <Button id="generateWebsite" className={classes.generateWebsite} onClick={generateSite} variant="contained" color="secondary">
+            Genereer website
+          </Button>
           <div className={classes.emptyTitle} />
           {isFetchingSearch && <div><CircularProgress id="progress" className={classes.progress} color="secondary" size="2rem" thickness={4.5} /></div>}
           <div>
@@ -143,5 +155,5 @@ const mapStateToProps = (state, { params }) => {
 
 export default connect(
   mapStateToProps,
-  { fetchSongs, searchSongs, navigateTo }
+  { fetchSongs, searchSongs, navigateTo, generateSite }
 )(SearchAppBar);
