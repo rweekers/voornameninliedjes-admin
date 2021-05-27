@@ -565,7 +565,7 @@ class SongDetail extends React.Component {
         const attribution = song.wikimediaPhotos.length > 0 ? song.wikimediaPhotos[0].attribution : '';
         const flickrId = song.flickrPhotos.length > 0 ? song.flickrPhotos[0] : '';
 
-        const songUrl = `https://voornameninliedjes.nl/song/${song.id}`
+        const songUrl = `https://voornameninliedjes.nl/${song.artist.toLowerCase()}/${song.title.toLowerCase()}`
 
         const user = this.state.user;
 
